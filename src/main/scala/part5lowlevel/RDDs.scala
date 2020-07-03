@@ -7,6 +7,35 @@ import scala.io.Source
 
 object RDDs extends App {
 
+  /*
+    - RDDs are essentially distributed typed collections of JVM objects
+      - what's the diff between these and datasets?
+      - difference: RDD is underlying "first citizen" of spark: all higher-level APIs reduce to RDDs
+      - e.g. RDDs are the ones that are actually partitionned
+    - Pros: can be highly optimized
+        - we can control how they are partitionned
+        - order of elements can be controlled
+        - order of operations matters for performance
+        - advanced spark users can get huge gains from using RDDs
+    - Cons: hard to work with
+        - for complex operations, need to know the internals of Spark
+        - poor APIs for quick data processing
+    - for most operations, use DataFrameDataset APIs (spark usually smart enough to optimize code)
+    - only use RDDs if you really, really need to care about performance
+    - Comparison: RDD vs Dataset
+      - in common
+        - distributed collections of JVM objects; so we have collection API (map, flatMap, filter, reduce, etc)
+        - have combination capability (union), counting (count), and distinct values (distinct)
+        - groupBy, sortBy
+      - RDDs but not dataset
+        - greater partition control: repartition, coalesce, partitioner, zipPartitions, mapPartitions
+        - operation control: checkpoint, isCheckpointed, localCheckpoint, cache
+        - storage control: cache, getStorageLevel, persist
+      - Datasets over RDDs
+        - select and join
+        - Spark planning/optimization before running code
+        - partition control + operation control + storage control has been mostly added by 3.0.0
+   */
   val spark = SparkSession.builder()
     .appName("Introduction to RDDs")
     .config("spark.master", "local")
@@ -34,7 +63,7 @@ object RDDs extends App {
   // 2b - reading from files
   val stocksRDD2 = sc.textFile("src/main/resources/data/stocks.csv")
     .map(line => line.split(","))
-    .filter(tokens => tokens(0).toUpperCase() == tokens(0))
+    .filter(tokens => tokens(0).toUpperCase() == tokens(0)) // this is how you filter out header; pretty painful
     .map(tokens => StockValue(tokens(0), tokens(1), tokens(2).toDouble))
 
   // 3 - read from a DF
@@ -44,6 +73,8 @@ object RDDs extends App {
     .csv("src/main/resources/data/stocks.csv")
 
   import spark.implicits._
+  // need to convert from a dataset to an RDD to keep type information
+  // if you go DF -> RDD you will have RDD[Row], so you'd be losing type information
   val stocksDS = stocksDF.as[StockValue]
   val stocksRDD3 = stocksDS.rdd
 
@@ -53,7 +84,7 @@ object RDDs extends App {
   // RDD -> DS
   val numbersDS = spark.createDataset(numbersRDD) // you get to keep type info
 
-  // Transformations
+  // Transformations; can transform RDD like any other collection
 
   // distinct
   val msftRDD = stocksRDD.filter(_.symbol == "MSFT") // lazy transformation
@@ -62,7 +93,7 @@ object RDDs extends App {
   // counting
   val companyNamesRDD = stocksRDD.map(_.symbol).distinct() // also lazy
 
-  // min and max
+  // min and max (actions)
   implicit val stockOrdering: Ordering[StockValue] =
     Ordering.fromLessThan[StockValue]((sa: StockValue, sb: StockValue) => sa.price < sb.price)
   val minMsft = msftRDD.min() // action
@@ -71,6 +102,8 @@ object RDDs extends App {
   numbersRDD.reduce(_ + _)
 
   // grouping
+  // there are more advanced overloaded grouping functions that choose how to partition output data
+  // there are also more efficient grouping methods than the groupBy function
   val groupedStocksRDD = stocksRDD.groupBy(_.symbol)
   // ^^ very expensive
 
@@ -86,7 +119,8 @@ object RDDs extends App {
     Size of a partition 10-100MB.
    */
 
-  // coalesce
+  // coalesce; to fewer partitions than it currently has
+  // we will have 15 partitions, and all other partitions will move data over to these 15 (not a true shuffle)
   val coalescedRDD = repartitionedStocksRDD.coalesce(15) // does NOT involve shuffling
   coalescedRDD.toDF.write
     .mode(SaveMode.Overwrite)
@@ -108,6 +142,7 @@ object RDDs extends App {
     .option("inferSchema", "true")
     .json("src/main/resources/data/movies.json")
 
+  // must get member names to match with column names
   val moviesRDD = moviesDF
     .select(col("Title").as("title"), col("Major_Genre").as("genre"), col("IMDB_Rating").as("rating"))
     .where(col("genre").isNotNull and col("rating").isNotNull)

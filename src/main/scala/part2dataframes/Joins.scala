@@ -25,6 +25,7 @@ object Joins extends App {
   // inner joins
   val joinCondition = guitaristsDF.col("band") === bandsDF.col("id")
   val guitaristsBandsDF = guitaristsDF.join(bandsDF, joinCondition, "inner")
+  //val guitaristsBandsDF2 = guitaristsDF.join(bandsDF, Seq(...), "inner")
 
   // outer joins
   // left outer = everything in the inner join + all the rows in the LEFT table, with nulls in where the data is missing
@@ -40,23 +41,30 @@ object Joins extends App {
   guitaristsDF.join(bandsDF, joinCondition, "left_semi")
 
   // anti-joins = everything in the left DF for which there is NO row in the right DF satisfying the condition
+  // i.e. left_semi + left_anti joins will sum up to all the rows in the left DF (assuming no dups and such)
   guitaristsDF.join(bandsDF, joinCondition, "left_anti")
 
+  // cartesian join
+  guitaristsDF.crossJoin(bandsDF)
 
-  // things to bear in mind
+  // things to bear in mind; both the DFs that were involved in joins had a column called "id"
   // guitaristsBandsDF.select("id", "band").show // this crashes
 
   // option 1 - rename the column on which we are joining
   guitaristsDF.join(bandsDF.withColumnRenamed("id", "band"), "band")
 
   // option 2 - drop the dupe column
+  // this looks weird, but it works because spark maintains unique identifiers for all the columns it operates on
+  // so command below: "spark, drop column id 12345 from this DF"
   guitaristsBandsDF.drop(bandsDF.col("id"))
+  //guitaristsBandsDF.drop(col("id")) // this one fails at runtime, as there are multiple id columns
+  guitaristsBandsDF.drop("id") // this one works at runtime
 
   // option 3 - rename the offending column and keep the data
   val bandsModDF = bandsDF.withColumnRenamed("id", "bandId")
   guitaristsDF.join(bandsModDF, guitaristsDF.col("band") === bandsModDF.col("bandId"))
 
-  // using complex types
+  // using complex types in joins
   guitaristsDF.join(guitarsDF.withColumnRenamed("id", "guitarId"), expr("array_contains(guitars, guitarId)"))
 
   /**

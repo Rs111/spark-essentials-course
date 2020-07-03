@@ -4,6 +4,7 @@ object SparkShell extends App {
 
   /**
     * This file contains a dummy application where I added what we learned in the Spark Shell lecture.
+    *
     */
 
   /**
@@ -23,6 +24,26 @@ object SparkShell extends App {
     *
     *  If you want to inspect the files that Spark SQL writes, open another terminal window/tab
     *       docker exec -it docker-spark-cluster_spark-master_1 bash
+    *       cd spark
+    *       ./bin/spark-sql
+    *       show databases;
+    *       create database rtjvm;
+    *       use rtjvm;
+    *       create table persons(id integer, name: string);
+    *       select * from persons;
+    *       insert into persons values (1, "Martin Odersky"), (2, "Matei Zaharia");
+    *       select * from persons;
+    *       describe extended persons; // describe gives you info, extended gives you more info
+    *       - managed vs non-managed
+    *         - managed: spark is in charge of metadata and in charge of the data; e.g. drop persons means you lose it all
+    *           - spark/spark-warehouse holds all tables (e.g. persons)
+    *         - external (unmanaged): spark is in charge of metadata only; but actual data is in some other place (e.g. s3 files)
+  *         create table flights(origin string, destination string) using csv options(header true, path "/home/rtjvm/data/flights"); // create external table
+    *         - need to specify this stuff to make it non managed
+    *       insert into flights values ("LA", "New York"), ("London", "Prauge")
+    *       describe extended flights;
+    *         - Type EXTERNAL
+    *
     *
     * The Spark SQL shell allows you to write any SQL statement, from creating databases and tables, to selecting, to creating views etc.
     *

@@ -22,6 +22,9 @@ object DataSources extends App {
     StructField("Origin", StringType)
   ))
 
+  val carsSchemaTwo = new StructType()
+    .add(StructField("Name", StringType))
+
   /*
     Reading a DF:
     - format
@@ -32,8 +35,10 @@ object DataSources extends App {
   val carsDF = spark.read
     .format("json")
     .schema(carsSchema) // enforce a schema
-    .option("mode", "failFast") // dropMalformed, permissive (default)
-    .option("path", "src/main/resources/data/cars.json")
+    // mode decides what spark should do if it encounters a malformed record
+    // permissive likely turns it to null; i.e. if spark fails parsing it will put null
+    .option("mode", "failFast") // other options: dropMalformed, permissive (default)
+    .option("path", "src/main/resources/data/cars.json") // tricky
     .load()
 
   // alternative reading with options map
@@ -50,8 +55,14 @@ object DataSources extends App {
    Writing DFs
    - format
    - save mode = overwrite, append, ignore, errorIfExists
+    - what should we do if file we're writing to already exists
    - path
    - zero or more options
+
+   Writing DF creates a folder with a bunch of files
+    - the actual data is the .json file in the folder
+    - the rest is some metadata
+    - crc files validate integrity
   */
   carsDF.write
     .format("json")
@@ -61,12 +72,15 @@ object DataSources extends App {
   // JSON flags
   spark.read
     .schema(carsSchema)
+    // can specify the date option if schema has a date-type (only works with an enforced schema)
+    // need to specify date format if parsing a date that is not in standard ISO format
+    // e.g. if you have a date in your data that's YYYY-MM-dd and you want to call it a date in your schema, need to specify the date format
     .option("dateFormat", "YYYY-MM-dd") // couple with schema; if Spark fails parsing, it will put null
     .option("allowSingleQuotes", "true")
     .option("compression", "uncompressed") // bzip2, gzip, lz4, snappy, deflate
     .json("src/main/resources/data/cars.json")
 
-  // CSV flags
+  // CSV flags (has the most flags because it's a flexible format)
   val stocksSchema = StructType(Array(
     StructField("symbol", StringType),
     StructField("date", DateType),
@@ -78,12 +92,18 @@ object DataSources extends App {
     .option("dateFormat", "MMM dd YYYY")
     .option("header", "true")
     .option("sep", ",")
-    .option("nullValue", "")
+    .option("nullValue", "") // parse this value as null in resulting dataframe (null doesn't exist in csv)
     .csv("src/main/resources/data/stocks.csv")
 
   // Parquet
+  // parquet is an open source compressed binary data storage format optimized for fast reading of columns
+  // works very very well with spark; it is the default storage format for DFs (don't need to specify format)
+  // it's very predictable; don't need all the options you have on CSVs
+  // it's very small size; way smaller than the JSON file (6-10x times smaller)
   carsDF.write
+    //.format()
     .mode(SaveMode.Overwrite)
+ //   .parquet()
     .save("src/main/resources/data/cars.parquet")
 
   // Text files
@@ -97,7 +117,7 @@ object DataSources extends App {
 
   val employeesDF = spark.read
     .format("jdbc")
-    .option("driver", driver)
+    .option("driver", driver) // class name that will act as the driver for connecting the jdbc
     .option("url", url)
     .option("user", user)
     .option("password", password)

@@ -19,7 +19,7 @@ object CommonTypes extends App {
   moviesDF.select(col("Title"), lit(47).as("plain_value"))
 
   // Booleans
-  val dramaFilter = col("Major_Genre") equalTo "Drama"
+  val dramaFilter = col("Major_Genre") equalTo "Drama" // col("Major_Genre") === lit("Drama")
   val goodRatingFilter = col("IMDB_Rating") > 7.0
   val preferredFilter = dramaFilter and goodRatingFilter
 
@@ -28,6 +28,7 @@ object CommonTypes extends App {
 
   val moviesWithGoodnessFlagsDF = moviesDF.select(col("Title"), preferredFilter.as("good_movie"))
   // filter on a boolean column
+  // filters filter on transformations that evaluate in a BooleanType Column; this includes just a Boolean Column itself
   moviesWithGoodnessFlagsDF.where("good_movie") // where(col("good_movie") === "true")
 
   // negations
@@ -87,6 +88,12 @@ object CommonTypes extends App {
   val carNameFilters = getCarNames.map(_.toLowerCase()).map(name => col("Name").contains(name))
   val bigFilter = carNameFilters.fold(lit(false))((combinedFilter, newCarNameFilter) => combinedFilter or newCarNameFilter)
   carsDF.filter(bigFilter).show
+
+  // version 3 - radu's version
+  carsDF
+    .filter(
+      getCarNames.map(s => col("Name").contains(s.toLowerCase)).reduce((accum, next) => accum || next)
+    )
 
 
 }

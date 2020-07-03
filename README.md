@@ -81,3 +81,16 @@ If you have changes to suggest to this repo, either
 - submit a GitHub issue
 - tell me in the course Q/A forum
 - submit a pull request!
+
+
+### Notes
+- Navigate to /spark-essetials
+- Start postgres DB: docker-compose up 
+- Run psql.sh: ./psql.sh
+    - this connects to postgres container
+- Run spark cluster
+    - cd spark-cluster
+    - chmod +x build-images.sh ; make executable
+    - ./build-images.sh
+    - after that, you should be able to do something like this
+        - docker-compose up --scale spark-worker-3

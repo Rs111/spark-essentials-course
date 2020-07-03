@@ -1,7 +1,7 @@
 package part2dataframes
 
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.{col, column, expr}
+import org.apache.spark.sql.functions.{col, column, expr, lit, lower}
 
 object ColumnsAndExpressions extends App {
 
@@ -17,7 +17,7 @@ object ColumnsAndExpressions extends App {
   // Columns
   val firstColumn = carsDF.col("Name")
 
-  // selecting (projecting)
+  // selecting (projecting); projecting the dataframe into a new dataframe that contains less data (DB SQL theory)
   val carNamesDF = carsDF.select(firstColumn)
 
   // various select methods
@@ -26,7 +26,7 @@ object ColumnsAndExpressions extends App {
     carsDF.col("Name"),
     col("Acceleration"),
     column("Weight_in_lbs"),
-    'Year, // Scala Symbol, auto-converted to column
+    'Year, // Scala Symbol, auto-converted to column (this is done through implicit conversion from Symbol => Column)
     $"Horsepower", // fancier interpolated string, returns a Column object
     expr("Origin") // EXPRESSION
   )
@@ -34,15 +34,19 @@ object ColumnsAndExpressions extends App {
   // select with plain column names
   carsDF.select("Name", "Year")
 
+  // advanced select
+  carsDF.select(carsDF.columns.map(colString => col(colString).as(colString)): _*)
+
   // EXPRESSIONS
   val simplestExpression = carsDF.col("Weight_in_lbs")
+  // column object here describes a transformation
   val weightInKgExpression = carsDF.col("Weight_in_lbs") / 2.2
 
   val carsWithWeightsDF = carsDF.select(
     col("Name"),
     col("Weight_in_lbs"),
     weightInKgExpression.as("Weight_in_kg"),
-    expr("Weight_in_lbs / 2.2").as("Weight_in_kg_2")
+    expr("Weight_in_lbs / 2.2").as("Weight_in_kg_2") // can pass in SQL-like string
   )
 
   // selectExpr
@@ -52,6 +56,9 @@ object ColumnsAndExpressions extends App {
     "Weight_in_lbs / 2.2"
   )
 
+  // validate a single value
+  lower(lit("HI THERE")).expr.eval() // res: Any = hi there
+
   // DF processing
 
   // adding a column
@@ -59,7 +66,7 @@ object ColumnsAndExpressions extends App {
   // renaming a column
   val carsWithColumnRenamed = carsDF.withColumnRenamed("Weight_in_lbs", "Weight in pounds")
   // careful with column names
-  carsWithColumnRenamed.selectExpr("`Weight in pounds`")
+  carsWithColumnRenamed.selectExpr("`Weight in pounds`") // need backticks when using columns with spaces in expressions
   // remove a column
   carsWithColumnRenamed.drop("Cylinders", "Displacement")
 
@@ -71,11 +78,13 @@ object ColumnsAndExpressions extends App {
   // chain filters
   val americanPowerfulCarsDF = carsDF.filter(col("Origin") === "USA").filter(col("Horsepower") > 150)
   val americanPowerfulCarsDF2 = carsDF.filter(col("Origin") === "USA" and col("Horsepower") > 150)
-  val americanPowerfulCarsDF3 = carsDF.filter("Origin = 'USA' and Horsepower > 150")
+  val americanPowerfulCarsDF3 = carsDF.filter(col("Origin") === "USA" && col("Horsepower") > 150)
+  val americanPowerfulCarsDF4 = carsDF.filter("Origin = 'USA' and Horsepower > 150")
 
   // unioning = adding more rows
   val moreCarsDF = spark.read.option("inferSchema", "true").json("src/main/resources/data/more_cars.json")
   val allCarsDF = carsDF.union(moreCarsDF) // works if the DFs have the same schema
+  val allCarsDF2 = carsDF.unionByName(moreCarsDF) // resolves columns by name
 
   // distinct values
   val allCountriesDF = carsDF.select("Origin").distinct()

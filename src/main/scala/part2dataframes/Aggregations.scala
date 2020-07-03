@@ -54,10 +54,20 @@ object Aggregations extends App {
 
   val avgRatingByGenreDF = moviesDF
     .groupBy(col("Major_Genre"))
-    .avg("IMDB_Rating")
+    .avg("IMDB_Rating") // name
 
   val aggregationsByGenreDF = moviesDF
     .groupBy(col("Major_Genre"))
+    .agg(
+      count("*").as("N_Movies"),
+      avg("IMDB_Rating").as("Avg_Rating")
+    )
+    .orderBy(col("Avg_Rating"))
+
+
+  val aggregationsByGenreDF2 = moviesDF
+     // .groupBy(List("col1", "col2").map(colString => col(colString): _*)
+    .groupBy(col("Major_Genre"), col("another_col"))
     .agg(
       count("*").as("N_Movies"),
       avg("IMDB_Rating").as("Avg_Rating")

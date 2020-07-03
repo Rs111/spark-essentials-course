@@ -26,7 +26,7 @@ object ManagingNulls extends App {
   // checking for nulls
   moviesDF.select("*").where(col("Rotten_Tomatoes_Rating").isNull)
 
-  // nulls when ordering
+  // nulls when ordering..nice; also desc_nulls_first
   moviesDF.orderBy(col("IMDB_Rating").desc_nulls_last)
 
   // removing nulls
@@ -41,6 +41,7 @@ object ManagingNulls extends App {
   ))
 
   // complex operations
+  // following functions are only available in SQL API, not dataframe API
   moviesDF.selectExpr(
     "Title",
     "IMDB_Rating",

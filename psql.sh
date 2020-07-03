@@ -7,4 +7,5 @@ echo "\\h		: help with SQL commands"
 echo "\\?		: help with psql commands"
 echo "\\q		: quit"
 echo "=================================================================="
+# postgres=container, the rest is command [psql --user docker --database jtvm]
 docker exec -it postgres psql -U docker -d rtjvm

@@ -1,14 +1,20 @@
 package part4sql
 
-import org.apache.spark.sql.{SaveMode, SparkSession}
+import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
 import org.apache.spark.sql.functions._
 
 object SparkSql extends App {
+  /*
+    - DataFrame vs table
+      - identical in terms of storage/partitionning; but DF has scala API, tables have SQL api
+   */
 
   val spark = SparkSession.builder()
     .appName("Spark SQL Practice")
     .config("spark.master", "local")
+    // change default directory of the spark warehouse; might want to store stuff elsewhere (e.g. S3)
     .config("spark.sql.warehouse.dir", "src/main/resources/warehouse")
+    // need this to be able to overwrite
     .config("spark.sql.legacy.allowCreatingManagedTableUsingNonemptyLocation", "true")
     .getOrCreate()
 
@@ -19,7 +25,7 @@ object SparkSql extends App {
   // regular DF API
   carsDF.select(col("Name")).where(col("Origin") === "USA")
 
-  // use Spark SQL
+  // use Spark SQL; creates alias in spark so that you can refer to it as a SQL table
   carsDF.createOrReplaceTempView("cars")
   val americanCarsDF = spark.sql(
     """
@@ -27,6 +33,7 @@ object SparkSql extends App {
     """.stripMargin)
 
   // we can run ANY SQL statement
+  // spark will create a spark-warehouse folder if you run this command
   spark.sql("create database rtjvm")
   spark.sql("use rtjvm")
   val databasesDF = spark.sql("show databases")

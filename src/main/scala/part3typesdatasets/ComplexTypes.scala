@@ -16,14 +16,16 @@ object ComplexTypes extends App {
     .json("src/main/resources/data/movies.json")
 
   // Dates
-
+  // what do you do if your dates are already in String format?
+  // converts it to a DateType with yyyy-mm-dd
   val moviesWithReleaseDates = moviesDF
     .select(col("Title"), to_date(col("Release_Date"), "dd-MMM-yy").as("Actual_Release")) // conversion
 
   moviesWithReleaseDates
     .withColumn("Today", current_date()) // today
     .withColumn("Right_Now", current_timestamp()) // this second
-    .withColumn("Movie_Age", datediff(col("Today"), col("Actual_Release")) / 365) // date_add, date_sub
+    .withColumn("Movie_Age", datediff(col("Today"), col("Actual_Release")) / 365)
+  // additional funcs: date_add, date_sub (add either Col or Int to date variable)
 
   moviesWithReleaseDates.select("*").where(col("Actual_Release").isNull)
 
@@ -33,7 +35,7 @@ object ComplexTypes extends App {
     * 2. Read the stocks DF and parse the dates
     */
 
-  // 1 - parse the DF multiple times, then union the small DFs
+  // 1 - parse the DF multiple times, then union the small DFs; or parse it once, and create value for date
 
   // 2
   val stocksDF = spark.read.format("csv")
@@ -44,7 +46,7 @@ object ComplexTypes extends App {
   val stocksDFWithDates = stocksDF
     .withColumn("actual_date", to_date(col("date"), "MMM dd yyyy"))
 
-  // Structures
+  // Structures; are basically groups of columns aggregated into one; basically named tuples in spark
 
   // 1 - with col operators
   moviesDF
@@ -57,7 +59,7 @@ object ComplexTypes extends App {
     .selectExpr("Title", "Profit.US_Gross")
 
   // Arrays
-
+  // split elements on either space or ,
   val moviesWithWords = moviesDF.select(col("Title"), split(col("Title"), " |,").as("Title_Words")) // ARRAY of strings
 
   moviesWithWords.select(
